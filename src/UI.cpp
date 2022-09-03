@@ -51,7 +51,7 @@ void	Button::draw()
 {
     toggled = false;
 	if (app.mouse_x > this->x && app.mouse_x < this->x + this->width && 
-		app.mouse_y > this->y && app.mouse_y < this->y + this->height)
+		app.mouse_y - app.scroll > this->y && app.mouse_y - app.scroll < this->y + this->height)
 	{
 		if (app.mousePressed)
 		{
@@ -76,20 +76,24 @@ void	Button::draw()
 		this->pressed = false;
 	}
 	
+    SDL_Rect r = this->rect;
+    r.y += this->app.scroll;
 
-	SDL_RenderFillRect(app.renderer, &this->rect);
+	SDL_RenderFillRect(app.renderer, &r);
 	SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, 255);
-	SDL_RenderDrawRect(app.renderer, &this->rect);
+	SDL_RenderDrawRect(app.renderer, &r);
 
 	SDL_QueryTexture(this->texture, NULL, NULL, &this->title_box.w, &this->title_box.h);
-	SDL_RenderCopy(app.renderer, this->texture, NULL, &this->title_box);
+	r = this->title_box;
+    r.y += this->app.scroll;
+    SDL_RenderCopy(app.renderer, this->texture, NULL, &r);
 }
 
 
 /* * */
 
 Slider::Slider(Application& app, int x, int y, int width, int height, float progress_start)
-    : UIComponent(app, x, y, width, height, std::to_string(static_cast<int>(progress_start * 100)) + " %"), progress(progress_start)
+    : UIComponent(app, x, y, width, height, std::to_string(static_cast<int>(progress_start * 100)) + " %"), progress(progress_start), color(170, 170, 170)
 {
     this->rect.x = this->x;
     this->rect.y = this->y;
@@ -130,6 +134,7 @@ Slider&     Slider::operator=(const Slider& other)
     this->title_box.y = y + 9;
     this->title_format = other.title_format;
     this->process_coefficient = other.process_coefficient;
+    this->color = other.color;
     return (*this);
 }
 
@@ -155,7 +160,7 @@ void	Slider::draw()
 	SDL_SetRenderDrawColor(this->app.renderer, 33, 33, 33, 255);
 
 	if (app.mouse_x > this->x && app.mouse_x < this->x + this->width && 
-		app.mouse_y > this->y && app.mouse_y < this->y + this->height)
+		app.mouse_y - app.scroll > this->y && app.mouse_y - app.scroll < this->y + this->height)
 	{
 		if (app.mousePressed)
 		{
@@ -180,26 +185,28 @@ void	Slider::draw()
 
 	SDL_Rect r;
 	r.x = this->x;
-	r.y = this->y;
+	r.y = this->y + this->app.scroll;
 	r.h = this->height;
 	r.w = this->width;
 	SDL_Rect bar;
 	bar.x = this->x;
-	bar.y = this->y;
+	bar.y = this->y + this->app.scroll;
 	bar.h = this->height;
 	bar.w = this->width * this->progress;
 	
 	
 	SDL_RenderFillRect(this->app.renderer, &r);
 
-	SDL_SetRenderDrawColor(this->app.renderer, 70, 70, 70, 255);
+	SDL_SetRenderDrawColor(this->app.renderer, abs(color.r - 60), abs(color.g - 60), abs(color.b - 60), 100);
 	SDL_RenderFillRect(this->app.renderer, &bar);
 
 	SDL_SetRenderDrawColor(this->app.renderer, 255, 255, 255, 255);
 	SDL_RenderDrawRect(this->app.renderer, &r);
-
+    
     SDL_QueryTexture(this->texture, NULL, NULL, &this->title_box.w, &this->title_box.h);
-    SDL_RenderCopy(this->app.renderer, this->texture, NULL, &this->title_box);
+    r = this->title_box;
+    r.y += this->app.scroll;
+    SDL_RenderCopy(this->app.renderer, this->texture, NULL, &r);
 }
 
 /* * */
@@ -220,9 +227,11 @@ void    Label::init()
 
 void    Label::draw()
 {
+    SDL_Rect r = this->title_box;
+    r.y += this->app.scroll;
  	SDL_SetRenderDrawColor(this->app.renderer, 255, 255, 255, 255);
-    SDL_QueryTexture(this->texture, NULL, NULL, &this->title_box.w, &this->title_box.h);
-    SDL_RenderCopy(this->app.renderer, this->texture, NULL, &this->title_box);
+    SDL_QueryTexture(this->texture, NULL, NULL, &r.w, &r.h);
+    SDL_RenderCopy(this->app.renderer, this->texture, NULL, &r);
 }
 
 
@@ -249,7 +258,7 @@ ParticleGroupUI::ParticleGroupUI(Application& app, int id)
 
 void    ParticleGroupUI::init()
 {
-    this->background.h = 25 * (this->app.particle_groups.size() + 5);
+    this->background.h = 25 * (this->app.particle_groups.size() + 4);
     this->background.y = 5 + (this->background.h + 5) * id;
     this->group_title.title_box.y = 10 + (this->background.h + 5) * id;
     this->amount_label.title_box.y = 25 + (this->background.h + 5) * id;
@@ -278,9 +287,12 @@ void    ParticleGroupUI::init()
     this->other_interactions_slider.clear();;
     for (std::vector<ParticleGroup>::iterator it = this->app.particle_groups.begin(); it != this->app.particle_groups.end(); ++it)
     {
+        if (it->id == this->group->id)
+            continue;
         this->other_interactions_labels.push_back(Label(app, "Group " + std::to_string(i) + " interaction", 10, 110 + (this->background.h + 5) * id + 25 * i));
         this->other_interactions_slider.push_back(Slider(app, 160, 110 + (this->background.h + 5) * id + 25 * i, 140, 10));
         
+        this->other_interactions_slider.at(i).color = it->color;
         this->other_interactions_slider.at(i).progress = (this->group->other_attractions.at(i).force + 0.6) * 0.833;
 
         this->other_interactions_labels.at(i).init();
@@ -292,10 +304,12 @@ void    ParticleGroupUI::init()
 
 void    ParticleGroupUI::draw()
 {
+    SDL_Rect back = background;
+    back.y += this->app.scroll;
     SDL_SetRenderDrawColor(this->app.renderer, 32, 32, 32, 255);
-    SDL_RenderFillRect(this->app.renderer, &this->background);
+    SDL_RenderFillRect(this->app.renderer, &back);
     SDL_SetRenderDrawColor(this->app.renderer, 255, 255, 255, 255);
-    SDL_RenderDrawRect(this->app.renderer, &this->background);
+    SDL_RenderDrawRect(this->app.renderer, &back);
     this->group_title.draw();
     this->amount_label.draw();
     this->amount_slider.draw();

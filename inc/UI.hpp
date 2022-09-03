@@ -81,6 +81,8 @@ class  Slider : public UIComponent
         SDL_Rect    title_box;
         SDL_Texture *texture;
 
+        Color       color;
+
         Slider(Application& app, int x = 0, int y = 0, int width = 10, int height = 10, float progress_start = 0);
         virtual ~Slider() {}
 

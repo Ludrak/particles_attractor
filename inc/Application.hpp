@@ -44,7 +44,8 @@ class Application
         float           zoom;
         float           x_pos;
         float           y_pos;
-
+        float           scroll;
+        
         TTF_Font        *font;
 
         std::vector<ParticleGroup>  particle_groups;

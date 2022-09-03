@@ -15,7 +15,6 @@ static void	generate_interactions(std::vector<ParticleGroup>& groups)
 	int i = 0;
 	for (std::vector<ParticleGroup>::iterator it = groups.begin(); it < groups.end(); ++it)
 	{
-
 		it->self_attraction.force = -randFloat(0, 0.6f);
 		it->self_repulsion.force = randFloat(0, 0.6f);
 
@@ -24,6 +23,9 @@ static void	generate_interactions(std::vector<ParticleGroup>& groups)
 		int j = 0;
 		for (std::vector<ParticleGroup>::iterator others = groups.begin(); others < groups.end(); ++others)
 		{
+			if (it->id == others->id)
+				continue;
+				
 			it->other_attractions.push_back(Interaction(*others, randFloat(-0.6f, 0.6f)));
 	//		std::cout << "group " << i << " -> " << j << " interaction: " << it->other_attractions.rbegin()->force << std::endl;
 			j++;
@@ -41,8 +43,8 @@ Application::Application()
   pmouse_y(0),
   mousePressed(false),
 
-  reset_button(*this, 5, 955, 300, 28, "Reset Init"),
-  shuffle_button(*this, 5, 925, 300, 28, "Shuffle Params"),
+  reset_button(*this, 5, 1170, 300, 28, "Reset Init"),
+  shuffle_button(*this, 5, 1200, 300, 28, "Shuffle Params"),
 
   zoom(0.4f),
   x_pos(600),
@@ -74,10 +76,11 @@ Application::Application()
 
 
 //	this->particle_groups = std::vector<ParticleGroup>();
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 400, Color(20, 255, 100)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 400, Color(70, 200, 255)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 400, Color(255, 100, 20)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 400, Color(255, 255, 255)));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 0, 400, Color(20, 255, 100)));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 1, 400, Color(70, 200, 255)));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 2, 400, Color(255, 100, 20)));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 3, 400, Color(255, 255, 255)));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 5, 400, Color(255, 220, 100)));
 	//generate_interactions(this->particle_groups);
 	//this->particle_groups.at(0).self_attraction.force = 0.3;
 //	this->particle_groups.at(0).self_repulsion.force = -0.3;
@@ -115,13 +118,17 @@ void    Application::run()
 			{
 				if (event.wheel.y > 0)
 				{
-					if (this->zoom > 0.26f)
-        			this->zoom *= 0.90;
+					if (this->zoom > 0.26f && mouse_x > 300)
+        				this->zoom *= 0.90;
+					if (scroll <= 0 && mouse_x < 300)
+						scroll += event.wheel.y * 10;
 				}
 				else 
 				{
-					if (this->zoom < 3.5f)
+					if (this->zoom < 3.5f && mouse_x > 300)
 						this->zoom *= 1.1;
+					if (scroll >= -800 && mouse_x < 300)
+						scroll += event.wheel.y * 10;
 				}
 
 				std::cout << zoom << std::endl;
@@ -171,6 +178,22 @@ void    Application::update()
 		it->update_particles();
 		it->draw_particles(this->zoom, this->x_pos, this->y_pos);
 	}
+
+	SDL_Rect r;
+	r.x = (-SPACE_BOUNDARY -5) * this->zoom + this->x_pos;
+	r.y = (-SPACE_BOUNDARY -5) * this->zoom + this->y_pos;
+	r.w = (SPACE_BOUNDARY * 2 + 10) * this->zoom;
+	r.h = (SPACE_BOUNDARY * 2 + 10) * this->zoom;
+	SDL_SetRenderDrawColor(this->renderer, 255, 255, 255, 255);
+	SDL_RenderDrawRect(this->renderer, &r);
+	r.x = 0;
+	r.y = 0;
+	r.w = 310;
+	r.h = 1000;
+	SDL_SetRenderDrawColor(this->renderer, 11, 11, 11, 255);
+	SDL_RenderFillRect(this->renderer, &r);
+	SDL_SetRenderDrawColor(this->renderer, 255, 255, 255, 255);
+	SDL_RenderDrawLine(this->renderer, 310, 0, 310, 1000);
 
 	this->reset_button.draw();
 	this->shuffle_button.draw();

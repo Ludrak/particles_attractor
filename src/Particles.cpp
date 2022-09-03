@@ -13,11 +13,13 @@
 static void  draw_circle(SDL_Renderer *renderer, float x, float y, float zoom = 0.4f, float off_x = 1500, float off_y = 1200)
 {
     SDL_Rect rect;
-    rect.x = (x - 3) * zoom + off_x;
-    rect.y = (y - 3) * zoom + off_y;
-    rect.w = 12 * zoom;
-    rect.h = 12 * zoom;
+    
+    rect.x = (x - 4) * zoom + off_x;
+    rect.y = (y - 4) * zoom + off_y;
+    rect.w = 8 * zoom;
+    rect.h = 8 * zoom;
     SDL_RenderFillRect(renderer, &rect);
+    //SDL_RenderDrawPoint(renderer, x * zoom + off_x, y * zoom + off_y);
     /*
     for (int w = 0; w < r * 2; w++)
     {
@@ -108,6 +110,9 @@ void    Interaction::compute(ParticleGroup& effect_group)
         p_1->vel_x += force_x;
         p_1->vel_y += force_y;
 
+
+        /* squared constraints */
+        /*
         if (p_1->vel_x > SPEED_OF_LIGHT)
             p_1->vel_x = SPEED_OF_LIGHT;
         if (p_1->vel_x < -SPEED_OF_LIGHT)
@@ -118,6 +123,18 @@ void    Interaction::compute(ParticleGroup& effect_group)
             p_1->vel_y = SPEED_OF_LIGHT;
         if (p_1->vel_y < -SPEED_OF_LIGHT)
             p_1->vel_y = -SPEED_OF_LIGHT;
+        */
+
+       /* rounded constraints */
+       
+        float mag = sqrtf(p_1->vel_x*p_1->vel_x + p_1->vel_y*p_1->vel_y);
+        if (mag > SPEED_OF_LIGHT)
+        {
+            p_1->vel_x /= mag;
+            p_1->vel_y /= mag;
+            p_1->vel_x *= SPEED_OF_LIGHT;
+            p_1->vel_y *= SPEED_OF_LIGHT;
+        }
 
         p_1->x += p_1->vel_x * 0.1;
         p_1->y += p_1->vel_y * 0.1;
