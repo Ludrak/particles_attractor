@@ -19,7 +19,7 @@ SRCS=				main.cpp Application.cpp Particles.cpp UI.cpp Random.cpp
 LIBRARYS	= 
 
 CLANG		=	clang++
-CPP_FLAGS	=	-O3 -Wextra -Wall -Werror -std=c++98 $(shell sdl2-config --cflags) #-g3 -fsanitize=address
+CPP_FLAGS	=	-O2 -Wextra -Wall -Werror -std=c++98 $(shell sdl2-config --cflags) #-g3 -fsanitize=address
 CPP_IFLAGS	=	
 
 CPP_LFLAGS	= $(shell sdl2-config --libs) -lSDL2_ttf

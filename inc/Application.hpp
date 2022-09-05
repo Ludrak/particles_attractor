@@ -36,8 +36,12 @@ class Application
         /* UI */
         Button      reset_button;
         Button      shuffle_button;
+        Label       fps_counter;
 
         std::vector<ParticleGroupUI> group_ui;
+
+        long        current_frame;
+        long        last_frame;
 
         /* Particles */
     public:
@@ -45,7 +49,7 @@ class Application
         float           x_pos;
         float           y_pos;
         float           scroll;
-        
+
         TTF_Font        *font;
 
         std::vector<ParticleGroup>  particle_groups;

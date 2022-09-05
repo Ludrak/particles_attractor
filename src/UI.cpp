@@ -1,9 +1,10 @@
 
 #include "UI.hpp"
 #include "Application.hpp"
+#include <SDL2/SDL_ttf.h>
 
-Button::Button(Application &app, int x, int y, int width, int height, const std::string& title)
-    : UIComponent(app, x, y, width, height, title), pressed(false), toggled(false)
+Button::Button(Application &app, int x, int y, int width, int height, const std::string& title, bool freezed)
+    : UIComponent(app, x, y, width, height, title, freezed), pressed(false), toggled(false)
 {
     this->rect.x = this->x;
     this->rect.y = this->y;
@@ -50,8 +51,9 @@ void    Button::init()
 void	Button::draw()
 {
     toggled = false;
+    float scroll = !this->freezed ? app.scroll : 0;
 	if (app.mouse_x > this->x && app.mouse_x < this->x + this->width && 
-		app.mouse_y - app.scroll > this->y && app.mouse_y - app.scroll < this->y + this->height)
+		app.mouse_y - scroll > this->y && app.mouse_y - scroll < this->y + this->height)
 	{
 		if (app.mousePressed)
 		{
@@ -77,7 +79,8 @@ void	Button::draw()
 	}
 	
     SDL_Rect r = this->rect;
-    r.y += this->app.scroll;
+    if (!this->freezed)
+        r.y += this->app.scroll;
 
 	SDL_RenderFillRect(app.renderer, &r);
 	SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, 255);
@@ -85,15 +88,16 @@ void	Button::draw()
 
 	SDL_QueryTexture(this->texture, NULL, NULL, &this->title_box.w, &this->title_box.h);
 	r = this->title_box;
-    r.y += this->app.scroll;
+    if (!this->freezed)
+        r.y += this->app.scroll;
     SDL_RenderCopy(app.renderer, this->texture, NULL, &r);
 }
 
 
 /* * */
 
-Slider::Slider(Application& app, int x, int y, int width, int height, float progress_start)
-    : UIComponent(app, x, y, width, height, std::to_string(static_cast<int>(progress_start * 100)) + " %"), progress(progress_start), color(170, 170, 170)
+Slider::Slider(Application& app, int x, int y, int width, int height, float progress_start, bool freezed)
+    : UIComponent(app, x, y, width, height, std::to_string(static_cast<int>(progress_start * 100)) + " %", freezed), progress(progress_start), centered(false), color(170, 170, 170)
 {
     this->rect.x = this->x;
     this->rect.y = this->y;
@@ -124,10 +128,10 @@ Slider&     Slider::operator=(const Slider& other)
     this->rect.y = this->y;
     this->rect.h = this->height;
     this->rect.w = this->width;
-    this->progress_rect.x = this->x;
+    this->progress_rect.x = this->x + this->width * 0.5f;
     this->progress_rect.y = this->y;
     this->progress_rect.h = this->height;
-    this->progress_rect.w = this->width * progress;
+    this->progress_rect.w = this->width * (progress - 0.5f);
     this->title_box.x = 0;
     this->title_box.y = 0;
     this->title_box.x = x + 5;
@@ -145,11 +149,15 @@ void    Slider::init()
     this->title_box.y = this->y + 10;
 
     char title_lbl[256];
-    int end = std::sprintf(title_lbl, this->title_format.c_str(), static_cast<int>(progress * this->process_coefficient));
+    int end;
+    if (this->centered)
+        end = std::sprintf(title_lbl, this->title_format.c_str(), static_cast<int>((progress - 0.5f) * this->process_coefficient * 2));
+    else
+        end = std::sprintf(title_lbl, this->title_format.c_str(), static_cast<int>(progress * this->process_coefficient));
     title_lbl[end] = 0;
     this->title = title_lbl;
 
-    SDL_Surface* surface = TTF_RenderText_Solid(this->app.font, this->title.c_str(), (SDL_Color){220, 220, 220, 0}); 
+    SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(this->app.font, title_lbl, (SDL_Color){220, 220, 220, 255}, 200); 
     this->texture = SDL_CreateTextureFromSurface(this->app.renderer, surface);
     SDL_FreeSurface(surface);
 }
@@ -160,14 +168,17 @@ void	Slider::draw()
 	SDL_SetRenderDrawColor(this->app.renderer, 33, 33, 33, 255);
 
 	if (app.mouse_x > this->x && app.mouse_x < this->x + this->width && 
-		app.mouse_y - app.scroll > this->y && app.mouse_y - app.scroll < this->y + this->height)
+		app.mouse_y - app.scroll > this->y && app.mouse_y - app.scroll < this->y + this->height + 10)
 	{
 		if (app.mousePressed)
 		{
 			progress = ((app.mouse_x - this->x) / this->width);
             
             char title_lbl[256];
-            std::sprintf(title_lbl, this->title_format.c_str(), static_cast<int>(progress * this->process_coefficient));
+            if (this->centered)
+                std::sprintf(title_lbl, this->title_format.c_str(), static_cast<int>((progress - 0.5f) * this->process_coefficient * 2));
+            else
+                std::sprintf(title_lbl, this->title_format.c_str(), static_cast<int>(progress * this->process_coefficient));
             this->title = title_lbl;//std::to_string(static_cast<int>(progress * 100)) + " %";
             SDL_Surface* surface = TTF_RenderText_Solid(this->app.font, this->title.c_str(), (SDL_Color){220, 220, 220, 0}); 
             this->texture = SDL_CreateTextureFromSurface(this->app.renderer, surface);
@@ -185,15 +196,32 @@ void	Slider::draw()
 
 	SDL_Rect r;
 	r.x = this->x;
-	r.y = this->y + this->app.scroll;
-	r.h = this->height;
+    r.h = this->height;
 	r.w = this->width;
 	SDL_Rect bar;
-	bar.x = this->x;
-	bar.y = this->y + this->app.scroll;
-	bar.h = this->height;
-	bar.w = this->width * this->progress;
-	
+
+    if (centered)
+    {
+        bar.x = this->x + this->width * 0.5f;
+        bar.w = this->width * (progress - 0.5f);
+    }
+    else
+    {
+        bar.w = this->width * progress;
+	    bar.x = this->x;
+    }
+    if (!freezed)
+    {
+        r.y = this->y + this->app.scroll;
+	    bar.y = this->y + this->app.scroll;
+    }
+    else
+	{
+        bar.y = this->y;
+        r.y = this->y;
+    }
+    bar.h = this->height;
+
 	
 	SDL_RenderFillRect(this->app.renderer, &r);
 
@@ -205,14 +233,15 @@ void	Slider::draw()
     
     SDL_QueryTexture(this->texture, NULL, NULL, &this->title_box.w, &this->title_box.h);
     r = this->title_box;
-    r.y += this->app.scroll;
+    if (!freezed)
+        r.y += this->app.scroll;
     SDL_RenderCopy(this->app.renderer, this->texture, NULL, &r);
 }
 
 /* * */
 
-Label::Label(Application& app, const std::string& label, int x, int y)
-: UIComponent(app, x, y, 0, 0, label)
+Label::Label(Application& app, const std::string& label, int x, int y, bool freezed)
+: UIComponent(app, x, y, 0, 0, label, freezed)
 {
     this->title_box.x = x;
     this->title_box.y = y;
@@ -220,7 +249,7 @@ Label::Label(Application& app, const std::string& label, int x, int y)
 
 void    Label::init()
 {
-    SDL_Surface* surface = TTF_RenderText_Solid(this->app.font, this->title.c_str(), (SDL_Color){220, 220, 220, 0}); 
+    SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(this->app.font, this->title.c_str(), (SDL_Color){255, 255, 255, 255}, 200); 
     this->texture = SDL_CreateTextureFromSurface(this->app.renderer, surface);
     SDL_FreeSurface(surface);
 }
@@ -228,7 +257,8 @@ void    Label::init()
 void    Label::draw()
 {
     SDL_Rect r = this->title_box;
-    r.y += this->app.scroll;
+    if (!this->freezed)
+        r.y += this->app.scroll;
  	SDL_SetRenderDrawColor(this->app.renderer, 255, 255, 255, 255);
     SDL_QueryTexture(this->texture, NULL, NULL, &r.w, &r.h);
     SDL_RenderCopy(this->app.renderer, this->texture, NULL, &r);
@@ -240,7 +270,7 @@ void    Label::draw()
 ParticleGroupUI::ParticleGroupUI(Application& app, int id)
 :   UIComponent(app, 10, 300, 200, 200),
     id(id),
-    group_title(app, "Group " + std::to_string(this->id), 10, 10),
+    group_title(app, "Group ", 10, 10),
 
     amount_label(app, "Amount", 10, 10),
     amount_slider(app, 160, 10, 140, 10),
@@ -274,6 +304,7 @@ void    ParticleGroupUI::init()
     this->amount_slider.process_coefficient = 1500;
 
     this->group = &this->app.particle_groups.at(this->id);
+    this->group_title.title = "Group " + group->name;
     this->group_title.init();
     this->amount_label.init();
     this->amount_slider.init();
@@ -293,6 +324,7 @@ void    ParticleGroupUI::init()
         this->other_interactions_slider.push_back(Slider(app, 160, 110 + (this->background.h + 5) * id + 25 * i, 140, 10));
         
         this->other_interactions_slider.at(i).color = it->color;
+        this->other_interactions_slider.at(i).centered = true;
         this->other_interactions_slider.at(i).progress = (this->group->other_attractions.at(i).force + 0.6) * 0.833;
 
         this->other_interactions_labels.at(i).init();

@@ -84,26 +84,61 @@ void    ParticleGroup::update_particles()
     }
 }
 
+/*
+static float fast_rsqrt( float number )
+{
+    const float threehalfs = 1.5F;
+
+    float x2 = number * 0.5F;
+    float y = number;
+
+    // evil floating point bit level hacking
+    long i = * ( long * ) &y;
+
+    // value is pre-assumed
+    i = 0x5f3759df - ( i >> 1 );
+    y = * ( float * ) &i;
+
+    // 1st iteration
+    y = y * ( threehalfs - ( x2 * y * y ) );
+
+    // 2nd iteration, this can be removed
+    // y = y * ( threehalfs - ( x2 * y * y ) );
+
+return y;
+}
+*/
 
 void    Interaction::compute(ParticleGroup& effect_group)
 {
+    float force_x = 0;
+    float force_y = 0;
+    float dx = 0;
+    float dy = 0;
+    float d = 0;
+    float f = 0;
+
+
     for (std::vector<Particle>::iterator p_1 = effect_group.particles.begin(); p_1 != effect_group.particles.end(); ++p_1)
     {
-        float force_x = 0;
-        float force_y = 0;
+        force_x = 0;
+        force_y = 0;
 
         // sum forces of all other particles
         for (std::vector<Particle>::const_iterator p_2 = this->group.getParticles().cbegin(); p_2 != this->group.getParticles().cend(); p_2++)
         {
-            float dx = p_1->x - p_2->x;
-            float dy = p_1->y - p_2->y;
-            float d = sqrtf(dx*dx + dy*dy);
-
-            if (d > 0 && d < LOCAL_VISION)
+            dx = p_1->x - p_2->x;
+            dy = p_1->y - p_2->y;
+            if (dx > -LOCAL_VISION || dy < LOCAL_VISION)
             {
-                float f = this->force * (1.0f / (d));
-                force_x += (f * dx);
-                force_y += (f * dy);
+                d = sqrt(dx*dx + dy*dy);
+
+                if (d > 0 && d < LOCAL_VISION)
+                {
+                    f = this->force * (1.0f / d);
+                    force_x += (f * dx);
+                    force_y += (f * dy);
+                }
             }
         }
 
@@ -112,6 +147,7 @@ void    Interaction::compute(ParticleGroup& effect_group)
 
 
         /* squared constraints */
+        
         /*
         if (p_1->vel_x > SPEED_OF_LIGHT)
             p_1->vel_x = SPEED_OF_LIGHT;
@@ -127,8 +163,9 @@ void    Interaction::compute(ParticleGroup& effect_group)
 
        /* rounded constraints */
        
-        float mag = sqrtf(p_1->vel_x*p_1->vel_x + p_1->vel_y*p_1->vel_y);
-        if (mag > SPEED_OF_LIGHT)
+    
+        float mag = sqrt(p_1->vel_x*p_1->vel_x + p_1->vel_y*p_1->vel_y);
+        if (mag < -SPEED_OF_LIGHT || mag > SPEED_OF_LIGHT)
         {
             p_1->vel_x /= mag;
             p_1->vel_y /= mag;

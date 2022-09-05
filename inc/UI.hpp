@@ -23,11 +23,12 @@ class UIComponent
         int         width;
         int         height;
         std::string title;
+        bool        freezed;
 
         Application     &app;
 
-        UIComponent(Application &app, int x = 0, int y = 0, int width = 10, int height = 10, const std::string& title = "")
-        : x(x), y(y), width(width), height(height), title(title), app(app)
+        UIComponent(Application &app, int x = 0, int y = 0, int width = 10, int height = 10, const std::string& title = "", bool freezed = false)
+        : x(x), y(y), width(width), height(height), title(title), freezed(freezed), app(app)
         {}
 
         UIComponent&    operator=(const UIComponent& other)
@@ -57,7 +58,7 @@ class   Button : public UIComponent
         SDL_Rect        title_box;
         SDL_Texture*    texture;
 
-        Button(Application &app, int x = 0, int y = 0, int width = 10, int height = 10, const std::string& title = "");
+        Button(Application &app, int x = 0, int y = 0, int width = 10, int height = 10, const std::string& title = "", bool freezed = false);
         virtual ~Button() { SDL_DestroyTexture(this->texture); }
 
         Button &operator=(const Button& other);
@@ -74,6 +75,7 @@ class  Slider : public UIComponent
         float       progress;
         std::string title_format;
         float       process_coefficient;
+        bool        centered;
 
         // render
         SDL_Rect    rect;
@@ -83,7 +85,7 @@ class  Slider : public UIComponent
 
         Color       color;
 
-        Slider(Application& app, int x = 0, int y = 0, int width = 10, int height = 10, float progress_start = 0);
+        Slider(Application& app, int x = 0, int y = 0, int width = 10, int height = 10, float progress_start = 0, bool freezed = false);
         virtual ~Slider() {}
 
         Slider&     operator=(const Slider& other);
@@ -99,7 +101,7 @@ class Label : public UIComponent
         SDL_Rect    title_box;
         SDL_Texture *texture;
 
-        Label(Application& app, const std::string& label, int x, int y);
+        Label(Application& app, const std::string& label, int x, int y, bool freezed = false);
         virtual ~Label() {}
 
         void        init();

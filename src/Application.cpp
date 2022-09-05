@@ -3,7 +3,9 @@
 
 #include "Application.hpp"
 #include "UI.hpp"
+#include "FrameCap.hpp"
 #include <unistd.h>
+#include <sys/time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <iostream>
@@ -43,11 +45,12 @@ Application::Application()
   pmouse_y(0),
   mousePressed(false),
 
-  reset_button(*this, 5, 1170, 300, 28, "Reset Init"),
-  shuffle_button(*this, 5, 1200, 300, 28, "Shuffle Params"),
+  reset_button(*this, 319, 930, 300, 28, "Reset Init", true),
+  shuffle_button(*this, 319, 965, 300, 28, "Shuffle Params", true),
+  fps_counter(*this, "xx FPS", 320, 10, true),
 
   zoom(0.4f),
-  x_pos(600),
+  x_pos(1050),
   y_pos(500)
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -56,7 +59,7 @@ Application::Application()
 		"Life",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		1200,
+		1700,
 		1000,
 		SDL_WINDOW_OPENGL
 	);
@@ -73,23 +76,20 @@ Application::Application()
 		SDL_Log("Unable to create renderer : %s", SDL_GetError());
 		return ;
 	}
-
-
-//	this->particle_groups = std::vector<ParticleGroup>();
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 0, 400, Color(20, 255, 100)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 1, 400, Color(70, 200, 255)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 2, 400, Color(255, 100, 20)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 3, 400, Color(255, 255, 255)));
-	this->particle_groups.push_back(ParticleGroup(this->renderer, 5, 400, Color(255, 220, 100)));
-	//generate_interactions(this->particle_groups);
-	//this->particle_groups.at(0).self_attraction.force = 0.3;
-//	this->particle_groups.at(0).self_repulsion.force = -0.3;
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 0, 400, Color(20, 255, 100), "A"));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 1, 400, Color(70, 200, 255), "B"));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 2, 400, Color(255, 100, 20), "C"));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 3, 400, Color(255, 255, 255), "D"));
+	this->particle_groups.push_back(ParticleGroup(this->renderer, 5, 400, Color(255, 220, 100), "E"));
+	//this->particle_groups.push_back(ParticleGroup(this->renderer, 6, 400, Color(220, 100, 255), "F"));
+	//this->particle_groups.push_back(ParticleGroup(this->renderer, 7, 400, Color(100, 220, 255), "G"));
 	generate_interactions(this->particle_groups);
 
 	this->font = TTF_OpenFont("res/font/Monaco.ttf", 12);
 
 	this->reset_button.init();
 	this->shuffle_button.init();// = Button(*this, 5, 45, 200, 28, "Shuffle Params");
+	this->fps_counter.init();
 
 	int i = 0;
 	for (std::vector<ParticleGroup>::iterator it = this->particle_groups.begin(); it != this->particle_groups.end(); ++it)
@@ -120,18 +120,26 @@ void    Application::run()
 				{
 					if (this->zoom > 0.26f && mouse_x > 300)
         				this->zoom *= 0.90;
-					if (scroll <= 0 && mouse_x < 300)
-						scroll += event.wheel.y * 10;
+					if (scroll < 0 && mouse_x < 300)
+					{
+						scroll += event.wheel.y * 16;
+						if (scroll > 0)
+							scroll = 0;
+					}
 				}
 				else 
 				{
 					if (this->zoom < 3.5f && mouse_x > 300)
 						this->zoom *= 1.1;
-					if (scroll >= -800 && mouse_x < 300)
-						scroll += event.wheel.y * 10;
+					if (scroll > -1200 && mouse_x < 300)
+					{
+						scroll += event.wheel.y * 16;
+						if (scroll < -1200)
+							scroll = -1200;
+					}
 				}
 
-				std::cout << zoom << std::endl;
+				//std::cout << zoom << std::endl;
 			}
 
 			if (event.type == SDL_MOUSEBUTTONDOWN)
@@ -169,10 +177,11 @@ void    Application::update()
 	SDL_Rect background;
 	background.x = 0;
 	background.y = 0;
-	background.w = 1200;
+	background.w = 1700;
 	background.h = 1000;
 	SDL_SetRenderDrawColor(this->renderer, 12, 12, 12, 255);
 	SDL_RenderFillRect(this->renderer, &background);
+
     for (std::vector<ParticleGroup>::iterator it = this->particle_groups.begin(); it < this->particle_groups.end(); ++it)
 	{
 		it->update_particles();
@@ -195,8 +204,18 @@ void    Application::update()
 	SDL_SetRenderDrawColor(this->renderer, 255, 255, 255, 255);
 	SDL_RenderDrawLine(this->renderer, 310, 0, 310, 1000);
 
+	this->last_frame = current_frame;
+	this->current_frame = time(NULL);
+	int fps = frameCap();
+	if (fps != -1)
+	{
+		this->fps_counter.title = std::to_string(fps) + " fps";
+		this->fps_counter.init();
+	}
+
 	this->reset_button.draw();
 	this->shuffle_button.draw();
+	this->fps_counter.draw();
 
 	for (std::vector<ParticleGroupUI>::iterator it = this->group_ui.begin(); it != this->group_ui.end(); ++it)
 	{
@@ -227,5 +246,3 @@ void    Application::update()
 		return ;
 	}
 }
-
-

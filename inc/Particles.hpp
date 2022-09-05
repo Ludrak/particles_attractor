@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include "Constants.hpp"
 #include "Random.hpp"
+#include <string>
 
 struct Color
 {
@@ -63,15 +64,15 @@ struct Interaction
 class ParticleGroup
 {
     public:
-        ParticleGroup(SDL_Renderer* renderer, int id, int amount, Color color)
-            : id(id), renderer(renderer), amount(amount), color(color), self_attraction(*this, 0), self_repulsion(*this, 0)
+        ParticleGroup(SDL_Renderer* renderer, int id, int amount, Color color, const std::string& name)
+            : id(id), name(name), renderer(renderer), amount(amount), color(color), self_attraction(*this, 0), self_repulsion(*this, 0)
             {
                 srand(time(NULL));
                 init_particles();
             }
         
         ParticleGroup(const ParticleGroup& p)
-            : id(p.id), renderer(p.renderer), particles(p.particles), amount(p.amount), color(p.color), self_attraction(*this, p.self_attraction.force), self_repulsion(*this, p.self_repulsion.force), other_attractions()
+            : id(p.id), name(p.name), renderer(p.renderer), particles(p.particles), amount(p.amount), color(p.color), self_attraction(*this, p.self_attraction.force), self_repulsion(*this, p.self_repulsion.force), other_attractions()
             {
                 srand(time(NULL));
                 for (std::vector<Interaction>::const_iterator it = p.other_attractions.cbegin(); it < p.other_attractions.cend(); ++it)
@@ -91,6 +92,7 @@ class ParticleGroup
     
     public:
         int                     id;
+        std::string             name;
         SDL_Renderer            *renderer;
 
         std::vector<Particle>   particles;
